@@ -60,6 +60,7 @@ class ConfigManager
 			FREE_QUESTS,
 			ONLY_PREMIUM_ACCOUNT,
 			MAP_CUSTOM_ENABLED,
+			ALL_CONSOLE_LOG,
 
 			LAST_BOOLEAN_CONFIG /* this must be the last one */
 		};
@@ -83,11 +84,12 @@ class ConfigManager
 			DEFAULT_PRIORITY,
 			MAP_AUTHOR,
 			STORE_IMAGES_URL,
-			VERSION_STR,
+			CLIENT_VERSION_STR,
 			MAP_CUSTOM_NAME,
 			MAP_CUSTOM_FILE,
 			MAP_CUSTOM_SPAWN,
 			MAP_CUSTOM_AUTHOR,
+      DISCORD_WEBHOOK_URL,
 
 			LAST_STRING_CONFIG /* this must be the last one */
 		};
@@ -120,7 +122,7 @@ class ConfigManager
 			MAX_CONTAINER,
 			MAX_ITEM,
 			MARKET_OFFER_DURATION,
-			VERSION,
+			CLIENT_VERSION,
 			DEPOT_BOXES,
 			FREE_DEPOT_LIMIT,
 			PREMIUM_DEPOT_LIMIT,
@@ -139,6 +141,7 @@ class ConfigManager
 			PUSH_DELAY,
 			PUSH_DISTANCE_DELAY,
 			STASH_ITEMS,
+			PARTY_LIST_MAX_DISTANCE,
 
 			LAST_INTEGER_CONFIG /* this must be the last one */
 		};

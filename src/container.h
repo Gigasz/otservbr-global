@@ -117,8 +117,10 @@ class Container : public Item, public Cylinder
 			return itemlist.rend();
 		}
 
+		bool countsToLootAnalyzerBalance();
 		bool hasParent() const;
 		void addItem(Item* item);
+		StashContainerList getStowableItems() const;
 		Item* getItemByIndex(size_t index) const;
 		bool isHoldingItem(const Item* item) const;
 
@@ -128,7 +130,7 @@ class Container : public Item, public Cylinder
 		uint32_t getWeight() const override final;
 
 		bool isUnlocked() const {
-			return unlocked;
+			return !this->isCorpse() && unlocked;
 		}
 		bool hasPagination() const {
 			return pagination;

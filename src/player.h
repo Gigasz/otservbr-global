@@ -414,7 +414,7 @@ class Player final : public Creature, public Cylinder
 			operatingSystem = clientos;
 		}
 
-		uint16_t getProtocolVersion() const {
+		uint32_t getProtocolVersion() const {
 			if (!client) {
 				return 0;
 			}
@@ -526,8 +526,26 @@ class Player final : public Creature, public Cylinder
 		bool isInMarket() const {
 			return inMarket;
 		}
-		void setSupplyStashAvailable(bool value) {
-			supplyStashAvailable = value;
+		void setSpecialMenuAvailable(bool supplyStashBool, bool marketMenuBool) {
+			// Menu option 'stow, stow container ...'
+			// Menu option 'show in market'
+			supplyStash = supplyStashBool;
+			marketMenu = marketMenuBool;
+			if (client) {
+				client->sendSpecialContainersAvailable();
+			}
+		}
+		bool isSupplyStashMenuAvailable() {
+			return supplyStash;
+		}
+		bool isMarketMenuAvailable() {
+			return marketMenu;
+		}
+		bool isExerciseTraining() {
+			return exerciseTraining;
+		}
+		void setExerciseTraining(bool isTraining) {
+			exerciseTraining = isTraining;
 		}
 		void setLastDepotId(int16_t newId) {
 			lastDepotId = newId;
@@ -625,6 +643,40 @@ class Player final : public Creature, public Cylinder
 		void removeMessageBuffer();
 
 		bool removeItemOfType(uint16_t itemId, uint32_t amount, int32_t subType, bool ignoreEquipped = false) const;
+
+		void addItemOnStash(uint16_t clientId, uint32_t amount) {
+			auto it = stashItems.find(clientId);
+			if (it != stashItems.end()) {
+				stashItems[clientId] += amount;
+				return;
+			}
+
+			stashItems[clientId] = amount;
+		}
+		uint16_t getStashItemCount(uint16_t clientId) const {
+			auto it = stashItems.find(clientId);
+			if (it != stashItems.end()) {
+				return static_cast<uint16_t>(it->second);
+			}
+			return 0;
+		}
+		bool withdrawItem(uint16_t clientId, uint32_t amount) {
+			auto it = stashItems.find(clientId);
+			if (it != stashItems.end()) {
+				if (it->second > amount) {
+					stashItems[clientId] -= amount;
+				} else if (it->second == amount) {
+					stashItems.erase(clientId);
+				} else {
+					return false;
+				}
+				return true;
+			}
+			return false;
+		}
+		StashItemList getStashItems() const {
+			return stashItems;
+		}
 
 		uint32_t getBaseCapacity() const {
 			if (hasFlag(PlayerFlag_CannotPickupItem)) {
@@ -741,7 +793,7 @@ class Player final : public Creature, public Cylinder
 		}
 
 		//V.I.P. functions
-		void notifyStatusChange(Player* player, VipStatus_t status);
+		void notifyStatusChange(Player* player, VipStatus_t status, bool message = true);
 		bool removeVIP(uint32_t vipGuid);
 		bool addVIP(uint32_t vipGuid, const std::string& vipName, VipStatus_t status);
 		bool addVIPInternal(uint32_t vipGuid);
@@ -783,7 +835,7 @@ class Player final : public Creature, public Cylinder
 
 		//stash functions
 		bool addItemFromStash(uint16_t itemId, uint32_t itemCount);
-		void stowContainer(Item* item, uint32_t count, bool stowalltype = false);
+		void stowItem(Item* item, uint32_t count, bool allItems);
 
 		void changeHealth(int32_t healthChange, bool sendHealthChange = true) override;
 		void changeMana(int32_t manaChange) override;
@@ -961,6 +1013,11 @@ class Player final : public Creature, public Cylinder
 				client->sendCreatureSay(creature, type, text, pos);
 			}
 		}
+		void sendCreatureReload(const Creature* creature) {
+			if (client) {
+				client->reloadCreature(creature);
+			}
+		}
 		void sendPrivateMessage(const Player* speaker, SpeakClasses type, const std::string& text) {
 			if (client) {
 				client->sendPrivateMessage(speaker, type, text);
@@ -1122,9 +1179,9 @@ class Player final : public Creature, public Cylinder
 				client->sendLootContainers();
 			}
 		}
-		void sendLootStats(Item* item) {
+		void sendLootStats(Item* item, uint8_t count) {
 			if (client) {
-				client->sendLootStats(item);
+				client->sendLootStats(item, count);
 			}
 		}
 
@@ -1157,7 +1214,7 @@ class Player final : public Creature, public Cylinder
 
 		void sendCancelMessage(const std::string& msg) const {
 			if (client) {
-				client->sendTextMessage(TextMessage(MESSAGE_STATUS_SMALL, msg));
+				client->sendTextMessage(TextMessage(MESSAGE_FAILURE, msg));
 			}
 		}
 		void sendCancelMessage(ReturnValue message) const;
@@ -1179,6 +1236,46 @@ class Player final : public Creature, public Cylinder
 		void sendCreatureHealth(const Creature* creature) const {
 			if (client) {
 				client->sendCreatureHealth(creature);
+			}
+		}
+		void sendPartyCreatureUpdate(const Creature* creature) const {
+			if (client) {
+				client->sendPartyCreatureUpdate(creature);
+			}
+		}
+		void sendPartyCreatureShield(const Creature* creature) const {
+			if (client) {
+				client->sendPartyCreatureShield(creature);
+			}
+		}
+		void sendPartyCreatureSkull(const Creature* creature) const {
+			if (client) {
+				client->sendPartyCreatureSkull(creature);
+			}
+		}
+		void sendPartyCreatureHealth(const Creature* creature, uint8_t healthPercent) const {
+			if (client) {
+				client->sendPartyCreatureHealth(creature, healthPercent);
+			}
+		}
+		void sendPartyPlayerMana(const Player* player, uint8_t manaPercent) const {
+			if (client) {
+				client->sendPartyPlayerMana(player, manaPercent);
+			}
+		}
+		void sendPartyCreatureShowStatus(const Creature* creature, bool showStatus) const {
+			if (client) {
+				client->sendPartyCreatureShowStatus(creature, showStatus);
+			}
+		}
+		void sendPartyPlayerVocation(const Player* player) const {
+			if (client) {
+				client->sendPartyPlayerVocation(player);
+			}
+		}
+		void sendPlayerVocation(const Player* player) const {
+			if (client) {
+				client->sendPlayerVocation(player);
 			}
 		}
 		void sendDistanceShoot(const Position& from, const Position& to, unsigned char type) const {
@@ -1342,11 +1439,6 @@ class Player final : public Creature, public Cylinder
 				client->sendChannelsDialog();
 			}
 		}
-		void sendSpecialContainersAvailable(bool supplyStashAvailable) {
-			if (client) {
-				client->sendSpecialContainersAvailable(supplyStashAvailable);
-			}
-		}
 		void sendOpenPrivateChannel(const std::string& receiver) {
 			if (client) {
 				client->sendOpenPrivateChannel(receiver);
@@ -1358,6 +1450,11 @@ class Player final : public Creature, public Cylinder
 			}
 		}
 		void sendImbuementWindow(Item* item);
+		void sendPodiumWindow(const Item* podium, const Position& position, uint16_t spriteId, uint8_t stackpos) {
+			if (client) {
+				client->sendPodiumWindow(podium, position, spriteId, stackpos);
+			}
+		}
 		void sendCloseContainer(uint8_t cid) {
 			if (client) {
 				client->sendCloseContainer(cid);
@@ -1499,10 +1596,14 @@ class Player final : public Creature, public Cylinder
 			lastPong = OTSYS_TIME();
 		}
 
-		void sendOpenStash() {
-			if (client && getLastDepotId() != -1) {
+		void sendOpenStash(bool isNpc = false) {
+			if (client && ((getLastDepotId() != -1) || isNpc)) {
         		client->sendOpenStash();
 			}
+		}
+		bool isStashExhausted() const;
+		void updateStashExhausted() {
+			lastStashInteraction = OTSYS_TIME();
 		}
 
 		void onThink(uint32_t interval) override;
@@ -1629,6 +1730,8 @@ class Player final : public Creature, public Cylinder
 			return idleTime;
 		}
 
+		void setTraining(bool value);
+
 		void onEquipImbueItem(Imbuement* imbuement);
 		void onDeEquipImbueItem(Imbuement* imbuement);
 
@@ -1680,6 +1783,24 @@ class Player final : public Creature, public Cylinder
  			}
  		}
 
+   		void createLeaderTeamFinder(NetworkMessage &msg)
+ 		{
+  			if (client) {
+ 				client->createLeaderTeamFinder(msg);
+ 			}
+ 		}
+   		void sendLeaderTeamFinder(bool reset)
+ 		{
+  			if (client) {
+ 				client->sendLeaderTeamFinder(reset);
+ 			}
+ 		}
+   		void sendTeamFinderList()
+ 		{
+  			if (client) {
+ 				client->sendTeamFinderList();
+ 			}
+ 		}
 		uint32_t getCharmPoints() {
 			return charmPoints;
 		}
@@ -1806,9 +1927,6 @@ class Player final : public Creature, public Cylinder
 
 		void updateInventoryWeight();
 
-		bool isItemStorable(Item* item);
-		ItemDeque getAllStorableItemsInContainer(Item* container);
-
 		void setNextWalkActionTask(SchedulerTask* task);
 		void setNextWalkTask(SchedulerTask* task);
 		void setNextActionTask(SchedulerTask* task, bool resetIdleTime = true);
@@ -1840,6 +1958,7 @@ class Player final : public Creature, public Cylinder
 		size_t getFirstIndex() const override;
 		size_t getLastIndex() const override;
 		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const override;
+		void stashContainer(StashContainerList itemDict);
 		std::map<uint32_t, uint32_t>& getAllItemTypeCount(std::map<uint32_t, uint32_t>& countMap) const override;
 		Item* getItemByClientId(uint16_t clientId) const;
 		std::map<uint16_t, uint16_t> getInventoryClientIds() const;
@@ -1899,6 +2018,7 @@ class Player final : public Creature, public Cylinder
 		int64_t lastWalkthroughAttempt = 0;
 		int64_t lastToggleMount = 0;
 		int64_t lastMarketInteraction = 0;  //Custom: Anti bug do market
+		int64_t lastStashInteraction = 0;
 		int64_t lastPing;
 		int64_t lastPong;
 		int64_t nextAction = 0;
@@ -1977,6 +2097,7 @@ class Player final : public Creature, public Cylinder
 		uint16_t storeXpBoost = 0;
 		uint16_t staminaXpBoost = 100;
 		int16_t lastDepotId = -1;
+		StashItemList stashItems; // [ClientID] = amount
 
 		// Bestiary
 		bool charmExpansion = false;
@@ -2044,7 +2165,9 @@ class Player final : public Creature, public Cylinder
 		bool logged = false;
 		bool scheduledSaleUpdate = false;
 		bool inEventMovePush = false;
-		bool supplyStashAvailable = false;
+		bool supplyStash = false; // Menu option 'stow, stow container ...'
+		bool marketMenu = false; // Menu option 'show in market'
+		bool exerciseTraining = false;
 
 		static uint32_t playerAutoID;
 

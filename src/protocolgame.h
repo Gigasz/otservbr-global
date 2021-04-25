@@ -24,9 +24,12 @@
 
 #include "protocol.h"
 #include "chat.h"
+#include "configmanager.h"
 #include "creature.h"
 #include "tasks.h"
 #include "gamestore.h"
+
+
 
 class NetworkMessage;
 class Player;
@@ -39,11 +42,12 @@ class Quest;
 class ProtocolGame;
 using ProtocolGame_ptr = std::shared_ptr<ProtocolGame>;
 
+extern ConfigManager g_config;
 extern Game g_game;
 
 struct TextMessage
 {
-	MessageClasses type = MESSAGE_STATUS_DEFAULT;
+	MessageClasses type = MESSAGE_STATUS;
 	std::string text;
 	Position position;
 	uint16_t channelId;
@@ -88,7 +92,7 @@ public:
 
 	void sendLockerItems(std::map<uint16_t, uint16_t> itemMap, uint16_t count);
 
-	uint16_t getVersion() const
+	uint32_t getVersion() const
 	{
 		return version;
 	}
@@ -131,6 +135,8 @@ private:
 	void parseAttack(NetworkMessage &msg);
 	void parseFollow(NetworkMessage &msg);
 
+	void sendSessionEndInformation(SessionEndInformations information);
+
 	void sendItemInspection(uint16_t itemId, uint8_t itemCount, const Item *item, bool cyclopedia);
 	void parseInspectionObject(NetworkMessage &msg);
 
@@ -152,6 +158,11 @@ private:
 	void BestiarysendCharms();
 	void sendBestiaryEntryChanged(uint16_t raceid);
 	void refreshBestiaryTracker(std::list<MonsterType *> trackerList);
+	void sendTeamFinderList();
+	void sendLeaderTeamFinder(bool reset);
+	void createLeaderTeamFinder(NetworkMessage &msg);
+	void parseLeaderFinderWindow(NetworkMessage &msg);
+	void parseMemberFinderWindow(NetworkMessage &msg);
 	void parseSendBuyCharmRune(NetworkMessage &msg);
 	void parseBestiarysendMonsterData(NetworkMessage &msg);
 	void addBestiaryTrackerList(NetworkMessage &msg);
@@ -208,6 +219,7 @@ private:
 	void parseEditVip(NetworkMessage &msg);
 
 	void parseRotateItem(NetworkMessage &msg);
+	void parseConfigureShowOffSocket(NetworkMessage& msg);
 	void parseWrapableItem(NetworkMessage &msg);
 
 	//Channel tabs
@@ -246,6 +258,14 @@ private:
 	void sendMagicEffect(const Position &pos, uint8_t type);
 	void sendRestingStatus(uint8_t protection);
 	void sendCreatureHealth(const Creature *creature);
+	void sendPartyCreatureUpdate(const Creature* target);
+	void sendPartyCreatureShield(const Creature* target);
+	void sendPartyCreatureSkull(const Creature* target);
+	void sendPartyCreatureHealth(const Creature* target, uint8_t healthPercent);
+	void sendPartyPlayerMana(const Player* target, uint8_t manaPercent);
+	void sendPartyCreatureShowStatus(const Creature* target, bool showStatus);
+	void sendPartyPlayerVocation(const Player* target);
+	void sendPlayerVocation(const Player* target);
 	void sendSkills();
 	void sendPing();
 	void sendPingBack();
@@ -318,6 +338,7 @@ private:
 	void sendTextWindow(uint32_t windowTextId, uint32_t itemId, const std::string &text);
 	void sendHouseWindow(uint32_t windowTextId, const std::string &text);
 	void sendOutfitWindow();
+	void sendPodiumWindow(const Item* podium, const Position& position, uint16_t spriteId, uint8_t stackpos);
 
 	void sendUpdatedVIPStatus(uint32_t guid, VipStatus_t newStatus);
 	void sendVIP(uint32_t guid, const std::string &name, const std::string &description, uint32_t icon, bool notify, VipStatus_t status);
@@ -370,7 +391,7 @@ private:
 
 	//quickloot
 	void sendLootContainers();
-	void sendLootStats(Item *item);
+	void sendLootStats(Item *item, uint8_t count);
 
 	//inventory
 	void sendInventoryItem(slots_t slot, const Item *item);
@@ -446,8 +467,8 @@ private:
 
 	uint32_t eventConnect = 0;
 	uint32_t challengeTimestamp = 0;
-	uint16_t version = CLIENT_VERSION;
-	uint32_t clientVersion = 0;
+	uint32_t version = g_config.getNumber(ConfigManager::CLIENT_VERSION);
+	int32_t clientVersion = 0;
 
 	uint8_t challengeRandom = 0;
 
@@ -460,9 +481,8 @@ private:
 	void sendInventory();
 
 	void sendOpenStash();
-	void AddPlayerStowedItems(NetworkMessage &msg);
 	void parseStashWithdraw(NetworkMessage &msg);
-	void sendSpecialContainersAvailable(bool supplyStashAvailable);
+	void sendSpecialContainersAvailable();
 };
 
 #endif

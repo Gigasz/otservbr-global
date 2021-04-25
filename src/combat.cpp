@@ -500,7 +500,7 @@ void Combat::CombatHealthFunc(Creature* caster, Creature* target, const CombatPa
 	}
 
 	if ((damage.primary.value < 0 || damage.secondary.value < 0)) {
-		if (caster && caster->getPlayer() && target->getSkull() != SKULL_BLACK && target->getPlayer()) {
+		if (caster && target && caster->getPlayer() && target->getSkull() != SKULL_BLACK && target->getPlayer()) {
 			damage.primary.value /= 2;
 			damage.secondary.value /= 2;
 		}
@@ -540,7 +540,7 @@ void Combat::CombatConditionFunc(Creature* caster, Creature* target, const Comba
 			if (player->isImmuneCleanse(condition->getType())) {
 				player->sendCancelMessage("You are still immune against this spell.");
 				return;
-			} else if (caster->getMonster()) {
+			} else if (caster && caster->getMonster()) {
 				uint16_t playerCharmRaceid = player->parseRacebyCharm(CHARM_CLEANSE, false, 0);
 				if (playerCharmRaceid != 0) {
 					MonsterType* mType = g_monsters.getMonsterType(caster->getName());
@@ -574,7 +574,9 @@ void Combat::CombatConditionFunc(Creature* caster, Creature* target, const Comba
 
 void Combat::CombatDispelFunc(Creature*, Creature* target, const CombatParams& params, CombatDamage*)
 {
-	target->removeCombatCondition(params.dispelType);
+	if(target) {
+		target->removeCombatCondition(params.dispelType);
+	}
 }
 
 void Combat::CombatNullFunc(Creature* caster, Creature* target, const CombatParams& params, CombatDamage*)
@@ -640,7 +642,7 @@ void Combat::combatTileEffects(const SpectatorHashSet& spectators, Creature* cas
 						itemId = ITEM_MAGICWALL_SAFE;
 					} else if (itemId == ITEM_WILDGROWTH) {
 						itemId = ITEM_WILDGROWTH_SAFE;
-					}	
+					}
 				} else if (itemId == ITEM_FIREFIELD_PVP_FULL || itemId == ITEM_POISONFIELD_PVP || itemId == ITEM_ENERGYFIELD_PVP || itemId == ITEM_MAGICWALL || itemId == ITEM_WILDGROWTH) {
 					casterPlayer->addInFightTicks();
 				}
@@ -802,7 +804,7 @@ void Combat::CombatFunc(Creature* caster, const Position& pos, const AreaCombat*
     if(data) {
         tmpDamage.origin = data->origin;
         tmpDamage.primary.type = data->primary.type;
-        tmpDamage.primary.value = data->primary.value;        
+        tmpDamage.primary.value = data->primary.value;
         tmpDamage.secondary.type = data->secondary.type;
         tmpDamage.secondary.value = data->secondary.value;
         tmpDamage.critical = data->critical;
@@ -847,7 +849,9 @@ void Combat::CombatFunc(Creature* caster, const Position& pos, const AreaCombat*
 void Combat::doCombatHealth(Creature* caster, Creature* target, CombatDamage& damage, const CombatParams& params)
 {
 	bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR);
-	if ((caster == target || canCombat) && params.impactEffect != CONST_ME_NONE) {
+	if ( (caster && target)
+			&& (caster == target || canCombat)
+			&& (params.impactEffect != CONST_ME_NONE)) {
 		g_game.addMagicEffect(target->getPosition(), params.impactEffect);
 	}
 
@@ -875,7 +879,7 @@ void Combat::doCombatHealth(Creature* caster, Creature* target, CombatDamage& da
 		}
 	}
 	if (canCombat) {
-		if (caster && params.distanceEffect != CONST_ANI_NONE) {
+		if (target && caster && params.distanceEffect != CONST_ANI_NONE) {
 			addDistanceEffect(caster, caster->getPosition(), target->getPosition(), params.distanceEffect);
 		}
 
@@ -903,7 +907,9 @@ void Combat::doCombatHealth(Creature* caster, const Position& position, const Ar
 void Combat::doCombatMana(Creature* caster, Creature* target, CombatDamage& damage, const CombatParams& params)
 {
 	bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR);
-	if ((caster == target || canCombat) && params.impactEffect != CONST_ME_NONE) {
+	if ( (caster && target)
+			&& (caster == target || canCombat)
+			&& (params.impactEffect != CONST_ME_NONE)) {
 		g_game.addMagicEffect(target->getPosition(), params.impactEffect);
 	}
 
@@ -974,7 +980,9 @@ void Combat::doCombatDispel(Creature* caster, const Position& position, const Ar
 void Combat::doCombatDispel(Creature* caster, Creature* target, const CombatParams& params)
 {
 	bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR);
-	if ((caster == target || canCombat) && params.impactEffect != CONST_ME_NONE) {
+	if ( (caster && target)
+			&& (caster == target || canCombat)
+			&& (params.impactEffect != CONST_ME_NONE)) {
 		g_game.addMagicEffect(target->getPosition(), params.impactEffect);
 	}
 
@@ -984,7 +992,7 @@ void Combat::doCombatDispel(Creature* caster, Creature* target, const CombatPara
 			params.targetCallback->onTargetCombat(caster, target);
 		}
 
-		if (caster && params.distanceEffect != CONST_ANI_NONE) {
+		if (target && caster && params.distanceEffect != CONST_ANI_NONE) {
 			addDistanceEffect(caster, caster->getPosition(), target->getPosition(), params.distanceEffect);
 		}
 	}
@@ -1021,13 +1029,9 @@ void ValueCallback::getMinMaxValues(Player* player, CombatDamage& damage, bool u
 {
 	//onGetPlayerMinMaxValues(...)
 	if (!scriptInterface->reserveScriptEnv()) {
-		std::cout << "[Error - ValueCallback::getMinMaxValues"
-				<< " Player "
-				<< player->getName()
-				<< " Formula "
-				<< type
-				<< "] Call stack overflow. Too many lua script calls being nested."
-				<< std::endl;
+		SPDLOG_ERROR("[ValueCallback::getMinMaxValues - Player {} formula {}] "
+                     "Call stack overflow. Too many lua script calls being nested.",
+                     player->getName(), type);
 		return;
 	}
 
@@ -1086,7 +1090,7 @@ void ValueCallback::getMinMaxValues(Player* player, CombatDamage& damage, bool u
 				else {
 					shouldCalculateSecondaryDamage = false;
 				}
-		
+
 				if (useCharges) {
 					uint16_t charges = tool->getCharges();
 					if (charges != 0) {
@@ -1103,7 +1107,7 @@ void ValueCallback::getMinMaxValues(Player* player, CombatDamage& damage, bool u
 		}
 
 		default: {
-			std::cout << "ValueCallback::getMinMaxValues - unknown callback type" << std::endl;
+			SPDLOG_WARN("[ValueCallback::getMinMaxValues] - Unknown callback type");
 			scriptInterface->resetScriptEnv();
 			return;
 		}
@@ -1132,7 +1136,7 @@ void ValueCallback::getMinMaxValues(Player* player, CombatDamage& damage, bool u
 			damage.secondary.type = COMBAT_NONE;
 			damage.secondary.value = 0;
 		}
-		
+
 		lua_pop(L, 2);
 	}
 
@@ -1149,17 +1153,12 @@ void TileCallback::onTileCombat(Creature* creature, Tile* tile) const
 {
 	//onTileCombat(creature, pos)
 	if (!scriptInterface->reserveScriptEnv()) {
-		std::cout << "[Error - TileCallback::onTileCombat"
-				<< " Creature " 
-				<< creature->getName() 
-				<< " type "
-				<< type
-				<< " on tile " 
-				<< "x:" << (tile->getPosition()).getX() << " "
-				<< "y:" << (tile->getPosition()).getY() << " "
-				<< "z:" << (tile->getPosition()).getZ() << " "
-				<< "] Call stack overflow. Too many lua script calls being nested." 
-				<< std::endl;
+		SPDLOG_ERROR("[TileCallback::onTileCombat - Creature {} type {} on tile x: {} y: {} z: {}] "
+                     "Call stack overflow. Too many lua script calls being nested.",
+                     creature->getName(), type,
+                     (tile->getPosition()).getX(),
+                     (tile->getPosition()).getY(),
+                     (tile->getPosition()).getZ());
 		return;
 	}
 
@@ -1189,10 +1188,9 @@ void TargetCallback::onTargetCombat(Creature* creature, Creature* target) const
 {
 	//onTargetCombat(creature, target)
 	if (!scriptInterface->reserveScriptEnv()) {
-		std::cout << "[Error - TargetCallback::onTargetCombat"
-				<< " Creature " 
-				<< creature->getName() 
-				<< "] Call stack overflow. Too many lua script calls being nested." << std::endl;
+		SPDLOG_ERROR("[TargetCallback::onTargetCombat - Creature {}] "
+                     "Call stack overflow. Too many lua script calls being nested.",
+                     creature->getName());
 		return;
 	}
 

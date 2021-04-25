@@ -42,9 +42,9 @@ maxPacketsPerSecond = 25
 maxItem = 2000
 maxContainer = 100
 
---- Version
-clientVersion = 1260
-clientVersionStr = "12.60"
+-- Version
+clientVersion = 1264
+clientVersionStr = "12.64"
 
 -- Depot Limit
 freeDepotLimit = 2000
@@ -61,6 +61,7 @@ onlyPremiumAccount = false
 weatherRain = false
 thunderEffect = false
 freeQuests = false
+allConsoleLog = false
 
 -- Deaths
 -- NOTE: Leave deathLosePercent as -1 if you want to use the default
@@ -88,6 +89,11 @@ pushDistanceDelay = 1500
 -- NOTE: unzip the map world.rar
 mapName = "otservbr"
 mapAuthor = "OTServBR"
+
+-- Party List limitations
+-- max distance in which players in party list are visible
+-- NOTE partyListMaxDistance set to 0 means no limit
+partyListMaxDistance = 30
 
 -- Custom Map
 -- NOTE: mapCustomEnabled: true = activate the map, false = disable the map
@@ -168,3 +174,8 @@ ownerName = "OTServBR-Global"
 ownerEmail = ""
 url = "https://github.com/opentibiabr/otservbr-global"
 location = "South America"
+
+-- Sends Discord webhook notifications on startup, raids and shutdown.
+-- The URL layout is https://discord.com/api/webhooks/:id/:token
+-- Leave empty if you wish to disable.
+discordWebhookURL = ""

@@ -21,7 +21,7 @@
 #define FS_TOOLS_H_5F9A9742DA194628830AA1C64909AE43
 
 #include <random>
-
+#include <string>
 #include <regex>
 #include <boost/algorithm/string.hpp>
 #include "position.h"
@@ -31,6 +31,9 @@
 void printXMLError(const std::string& where, const std::string& fileName, const pugi::xml_parse_result& result);
 
 std::string transformToSHA1(const std::string& input);
+
+uint16_t getStashSize(StashItemList itemList);
+
 std::string generateToken(const std::string& secret, uint32_t ticks);
 
 void replaceString(std::string& str, const std::string& sought, const std::string& replacement);
@@ -108,7 +111,7 @@ std::string getObjectCategoryName(ObjectCategory_t category);
 
 int64_t OTSYS_TIME();
 
-SpellGroup_t stringToSpellGroup(std::string value);
+SpellGroup_t stringToSpellGroup(const std::string &value);
 
 static inline Cipbia_Elementals_t getCipbiaElement(CombatType_t combatType) {
 	switch (combatType) {
